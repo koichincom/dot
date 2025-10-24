@@ -1,0 +1,7 @@
+# Appearance
+font-family = "JetBrainsMonoNL Nerd Font"
+font-size = 20
+theme = dark:"GitHub Dark Dimmed", light:"Github Light Default"
+
+mouse-hide-while-typing = true
+macos-titlebar-style = tabs

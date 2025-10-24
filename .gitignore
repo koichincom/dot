@@ -1,0 +1,26 @@
+# Ignore all files
+/*
+
+# Shell
+!.zshrc
+!.zprofile
+
+# Git
+!.gitignore
+!.gitignore_global
+
+# Dotfiles
+!.config/
+.config/*
+!.config/nvim/
+!.config/tmux/
+!.config/ghostty/
+!.config/wezterm/
+!.config/karabiner/
+!.claude/
+.claude/*
+!.claude/settings.json
+
+# Documentation
+!LICENSE
+!README.md
