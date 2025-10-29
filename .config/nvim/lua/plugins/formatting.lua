@@ -1,3 +1,4 @@
+-- Code formatter with support for multiple formatters per filetype
 return {
     "stevearc/conform.nvim",
     event = { "BufReadPre", "BufNewFile" },

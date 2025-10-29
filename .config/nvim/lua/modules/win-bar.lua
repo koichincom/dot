@@ -16,21 +16,47 @@ function M.set_git_branch(is_init_from_gitsigns, execute_set_win_bar)
     if not git_branch_init then
         return
     end
-    -- Get branch name from gitsigns (works for both normal buffers and oil.nvim directory buffers)
-    local ok, head = pcall(function()
-        return vim.b.gitsigns_head
-    end)
-    if ok and head and head ~= "" then
-        git_branch = head
+
+    -- For oil buffers, get branch directly from git since gitsigns doesn't attach to them
+    local bufname = vim.api.nvim_buf_get_name(0)
+    if vim.startswith(bufname, "oil://") or bufname == "oil:" then
+        local oil_dir = require("oil").get_current_dir()
+        if oil_dir then
+            local handle =
+                io.popen("git -C " .. vim.fn.shellescape(oil_dir) .. " rev-parse --abbrev-ref HEAD 2>/dev/null")
+            if handle then
+                local branch = handle:read "*l"
+                handle:close()
+                if branch and branch ~= "" then
+                    git_branch = branch
+                else
+                    git_branch = ""
+                end
+            else
+                git_branch = ""
+            end
+        else
+            git_branch = ""
+        end
     else
-        git_branch = ""
+        -- Normal buffers: get branch name from gitsigns
+        local ok, head = pcall(function()
+            return vim.b.gitsigns_head
+        end)
+        if ok and head and head ~= "" then
+            git_branch = head
+        else
+            git_branch = ""
+        end
     end
+
     if execute_set_win_bar then
         M.set_win_bar(false)
     end
 end
 
--- Called when in oil buffer
+-- Clear the cached git branch (currently unused after updating oil integration)
+-- Kept for potential future use with special buffers where git context is inappropriate
 function M.clear_git_branch()
     git_branch = ""
     M.set_win_bar(false)
@@ -39,6 +65,9 @@ end
 local file_path = ""
 local last_full_path = ""
 local file_name = ""
+-- Extract and cache file path and filename for winbar display
+-- Handles both normal file buffers and oil.nvim directory buffers
+-- Updates only when the full path changes (performance optimization)
 function M.set_file_path_name()
     local full_path = vim.fs.normalize(vim.fn.expand "%:p")
     if full_path == last_full_path then
@@ -47,21 +76,21 @@ function M.set_file_path_name()
     last_full_path = full_path
 
     file_path, file_name = "", ""
-    -- It also detects "oil:" for the root directory
+    -- Handle oil.nvim directory buffers (display directory path only, no filename)
     if vim.startswith(full_path, "oil:/") or full_path == "oil:" then
-        -- Using oil.nvim API to get the current directory, so oil.nvim should be loaded first
         full_path = vim.fs.normalize(require("oil").get_current_dir())
         if full_path ~= vim.fs.normalize(vim.fn.getcwd()) then
             file_path = vim.fn.fnamemodify(full_path, ":.")
         end
     else
-        full_path = vim.fn.fnamemodify(full_path, ":.") -- Make path relative to cwd
-        file_path = vim.fn.fnamemodify(full_path, ":h")
-        file_path = file_path:gsub("^%.$", "")
-        file_name = vim.fn.fnamemodify(full_path, ":t")
+        -- Normal file buffers: split into directory and filename
+        full_path = vim.fn.fnamemodify(full_path, ":.") -- Make relative to cwd
+        file_path = vim.fn.fnamemodify(full_path, ":h") -- Directory portion
+        file_path = file_path:gsub("^%.$", "") -- Remove "." for cwd root
+        file_name = vim.fn.fnamemodify(full_path, ":t") -- Filename only
     end
 
-    -- file_path visual format
+    -- Normalize display: strip leading/trailing slashes
     if string.sub(file_path, 1, 1) == "/" then
         file_path = string.sub(file_path, 2, #file_path)
     end
@@ -69,7 +98,6 @@ function M.set_file_path_name()
         file_path = string.sub(file_path, 1, #file_path - 1)
     end
 
-    -- file_name visual format
     if string.sub(file_name, 1, 1) == "/" then
         file_name = string.sub(file_name, 2, #file_name)
     end
@@ -80,7 +108,7 @@ function M.set_file_path_name()
     M.set_win_bar(false)
 end
 
--- Display only if the file encoding is not UTF-8
+-- File encoding indicator (shown as "[encoding-name]" for non-UTF-8 files only)
 local encode = ""
 function M.set_encode_status()
     encode = (vim.bo.fileencoding):lower()
@@ -92,7 +120,7 @@ function M.set_encode_status()
     M.set_win_bar(false)
 end
 
--- Display only if the file is modified and unsaved
+-- File modification indicator (shown as "M" for unsaved changes)
 local file_modified = ""
 function M.set_file_modified_status()
     if vim.bo.modified then
@@ -103,6 +131,7 @@ function M.set_file_modified_status()
     M.set_win_bar(false)
 end
 
+-- Auto-save status indicator (shown as "S" when enabled)
 local auto_save_status = ""
 function M.set_auto_save_status(is_enabled)
     if is_enabled then
@@ -113,6 +142,7 @@ function M.set_auto_save_status(is_enabled)
     M.set_win_bar(false)
 end
 
+-- Copilot status indicator (shown as "C" when enabled)
 local copilot_status = ""
 function M.set_copilot_status(is_enabled)
     if is_enabled then
@@ -123,6 +153,7 @@ function M.set_copilot_status(is_enabled)
     M.set_win_bar(false)
 end
 
+-- Line wrap status indicator (shown as "W" when wrap is enabled)
 local wrap_status = ""
 function M.set_wrap_status(is_enabled)
     if is_enabled then
@@ -137,6 +168,11 @@ local is_initialized = false
 local palette = require "modules.color-palette"
 
 local active_ns = require("modules.namespaces").active
+-- Set mode-specific background colors for the active window's winbar
+-- Modes: "normal" (base bg), "insert" (green), "visual" (yellow), "replace" (red), other (purple)
+-- Parameters:
+--   is_init: true during initialization (before is_initialized flag is set)
+--   mode: normalized mode string from modules.modes
 function M.set_active_winbar_highlight(is_init, mode)
     if not is_initialized and not is_init then
         return
@@ -265,6 +301,7 @@ function M.set_active_winbar_highlight(is_init, mode)
 end
 
 local inactive_ns = require("modules.namespaces").inactive
+-- Set dimmed highlights for inactive windows (uses desaturated "basics" colors)
 function M.set_inactive_winbar_highlight()
     if not is_initialized then
         return
@@ -310,12 +347,14 @@ function M.set_inactive_winbar_highlight()
 end
 
 local last_winbar = ""
+-- Construct and update the winbar string (only updates if content changed)
+-- Parameter: is_init - true during initialization
 function M.set_win_bar(is_init)
     if not is_initialized and not is_init then
         return
     end
 
-    -- Do not display winbar for certain filetypes
+    -- Special case: Copilot Chat gets a centered title instead of file info
     if vim.bo.filetype:match "^copilot%-chat" then
         local winbar_copilot_chat = table.concat {
             "%#WinBar#",
@@ -328,7 +367,7 @@ function M.set_win_bar(is_init)
         return
     end
 
-    -- Spacing logic
+    -- Calculate dynamic spacing based on which components are visible
     local center_spacing_1 = (file_path ~= "" and file_name ~= "") and "/" or ""
     local center_spacing_2 = ((file_path ~= "" or file_name ~= "") and encode ~= "") and " " or ""
     local right_spacing_1 = (
@@ -339,14 +378,15 @@ function M.set_win_bar(is_init)
     local right_spacing_2 = (auto_save_status ~= "" and (wrap_status ~= "" or copilot_status ~= "")) and " " or ""
     local right_spacing_3 = (wrap_status ~= "" and copilot_status ~= "") and " " or ""
 
-    -- Construct the winbar string
+    -- Assemble winbar using vim statusline format
+    -- %#HighlightGroup# sets highlight, %= creates alignment sections (left/center/right)
     local winbar = table.concat {
-        -- Left
+        -- Left section: git branch
         "%#WinBar#",
         " ",
         git_branch,
 
-        -- Center
+        -- Center section: file path and name
         "%=",
         file_path,
         center_spacing_1,
@@ -356,7 +396,7 @@ function M.set_win_bar(is_init)
         center_spacing_2,
         encode,
 
-        -- Right
+        -- Right section: status indicators
         "%=",
         "%#WinBarAlert#",
         file_modified,
@@ -377,6 +417,8 @@ function M.set_win_bar(is_init)
     end
 end
 
+-- Initialize winbar system on first buffer load
+-- Populates all component caches, renders winbar, and sets initial highlights
 function M.initialize_win_bar()
     if is_initialized then
         return

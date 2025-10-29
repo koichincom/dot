@@ -12,12 +12,14 @@ end
 
 vim.g.auto_save_enabled = true
 
+-- Save the current buffer if it's valid and auto-save is enabled
 function M.execute_save()
     if is_buffer_legit() and (vim.g.auto_save_enabled == true) then
         vim.cmd "update"
     end
 end
 
+-- Toggle auto-save on/off and update winbar indicator
 local function toggle_auto_save()
     local win_bar = require "modules.win-bar"
     if vim.g.auto_save_enabled == true then

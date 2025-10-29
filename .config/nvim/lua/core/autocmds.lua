@@ -7,6 +7,8 @@ vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "WinEnter", "BufWinEnte
 })
 
 --------------------------------------------------------------------------------
+-- Color column management (updates based on buffer type and background)
+--------------------------------------------------------------------------------
 local colorcolumn = vim.api.nvim_create_augroup("ColorColumn", { clear = true })
 local module_colorcolumn = require "modules.colorcolumn"
 
@@ -27,7 +29,8 @@ vim.api.nvim_create_autocmd({ "OptionSet" }, {
 })
 
 --------------------------------------------------------------------------------
-
+-- Auto-formatting (runs on buffer enter, before write, and after insert mode)
+--------------------------------------------------------------------------------
 local formatting = vim.api.nvim_create_augroup("Formatting", { clear = true })
 
 vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePre", "InsertLeave" }, {
@@ -45,7 +48,8 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePre", "InsertLeave" }, {
 })
 
 --------------------------------------------------------------------------------
-
+-- Auto-linting (triggers on write and after insert mode)
+--------------------------------------------------------------------------------
 local linting = vim.api.nvim_create_augroup("Linting", { clear = true })
 
 vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
@@ -59,7 +63,8 @@ vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
 })
 
 --------------------------------------------------------------------------------
-
+-- Auto-save (triggers on insert leave and buffer leave)
+--------------------------------------------------------------------------------
 local auto_save = vim.api.nvim_create_augroup("AutoWrite", { clear = true })
 local module_auto_save = require "modules.auto-save"
 
@@ -84,11 +89,12 @@ vim.api.nvim_create_autocmd({ "BufLeave" }, {
 })
 
 --------------------------------------------------------------------------------
-
+-- Color scheme management (updates when background changes)
+--------------------------------------------------------------------------------
 local color_scheme = vim.api.nvim_create_augroup("ColorScheme", { clear = true })
 local module_colorscheme = require "modules.colorscheme"
 
--- Within the same triggering of OptionSet, the colorscheme should be updated first
+-- Update colorscheme when background changes (light/dark)
 vim.api.nvim_create_autocmd({ "OptionSet" }, {
     group = color_scheme,
     pattern = "background",
@@ -98,7 +104,8 @@ vim.api.nvim_create_autocmd({ "OptionSet" }, {
 })
 
 --------------------------------------------------------------------------------
-
+-- Line number display management (switches between relative and absolute based on mode)
+--------------------------------------------------------------------------------
 local line_number = vim.api.nvim_create_augroup("LineNumber", { clear = true })
 local module_line_number = require "modules.line-numbers"
 
@@ -151,7 +158,8 @@ vim.api.nvim_create_autocmd({ "ModeChanged" }, {
 })
 
 --------------------------------------------------------------------------------
-
+-- Cursor line management (highlights current line in active window only)
+--------------------------------------------------------------------------------
 local cursor_line = vim.api.nvim_create_augroup("CursorLine", { clear = true })
 local module_cursor_line = require "modules.cursor-line"
 
@@ -178,11 +186,12 @@ vim.api.nvim_create_autocmd("WinLeave", {
 })
 
 --------------------------------------------------------------------------------
-
+-- Winbar management (file path, git branch, and status indicators)
+--------------------------------------------------------------------------------
 local win_bar = vim.api.nvim_create_augroup("WinBar", { clear = true })
 local module_win_bar = require "modules.win-bar"
 
--- when git branch changed from outside (e.g., terminal command) rarely happens
+-- Detect git branch changes from external commands (e.g., terminal git checkout)
 vim.api.nvim_create_autocmd("User", {
     group = win_bar,
     pattern = "GitsignsHeadChange",
@@ -195,11 +204,18 @@ vim.api.nvim_create_autocmd("User", {
     end,
 })
 
-vim.api.nvim_create_autocmd("BufEnter", {
+-- Update git branch when navigating directories in oil.nvim
+vim.api.nvim_create_autocmd("User", {
     group = win_bar,
-    pattern = "oil://*",
-    callback = function()
-        module_win_bar.clear_git_branch()
+    pattern = "OilEnter",
+    callback = function(args)
+        -- Get the current directory in the oil buffer
+        local dir = require("oil").get_current_dir(args.data.buf)
+        if dir then
+            -- Initialize and update the git branch for the new directory
+            -- Set is_init_from_gitsigns=true to allow updates even when starting with oil
+            module_win_bar.set_git_branch(true, true)
+        end
     end,
 })
 
@@ -223,7 +239,7 @@ vim.api.nvim_create_autocmd("BufEnter", {
     end,
 })
 
--- when fileencoding is changed from outside (e.g., :set fileencoding=utf-8) rarely happens
+-- Detect file encoding changes (e.g., :set fileencoding=utf-8)
 vim.api.nvim_create_autocmd("OptionSet", {
     group = win_bar,
     pattern = "fileencoding",

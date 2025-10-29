@@ -7,6 +7,8 @@ local dark_theme = "github_dark_dimmed"
 local last_background = ""
 local is_initialized = false
 
+-- Update colorscheme to match current background setting (light/dark)
+-- Only updates if background has changed (performance optimization)
 function M.update_colorscheme(is_init)
     if not is_initialized and not is_init then
         return
@@ -28,6 +30,7 @@ function M.update_colorscheme(is_init)
     end
 end
 
+-- Initialize colorscheme system (sets initial theme based on background)
 function M.initialize_color_scheme()
     if is_initialized then
         return

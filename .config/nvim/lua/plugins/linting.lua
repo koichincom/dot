@@ -1,3 +1,4 @@
+-- Asynchronous linter with filetype-specific linter configuration
 return {
     "mfussenegger/nvim-lint",
     event = { "BufReadPre", "BufNewFile" },

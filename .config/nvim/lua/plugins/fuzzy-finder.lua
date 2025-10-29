@@ -1,3 +1,4 @@
+-- Fuzzy finder for files, buffers, grep, and more
 return {
     "nvim-telescope/telescope.nvim",
     event = "VimEnter",
