@@ -1,4 +1,4 @@
-# Neovim Todo
+# Todo
 
 - [ ] Feature: select inside '%==%' with 'vam' and 'vim' keymaps like 'vap' and 'vip' for paragraphs
 - [ ] Feature: LSP-related keymaps, such as go to definition, reference etc.

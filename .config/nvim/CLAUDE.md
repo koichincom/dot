@@ -43,82 +43,149 @@ lua/
 
 ## Core Architecture Patterns
 
-### Initialization Flow
+### Initialization Flow (Critical Order)
 
-1. **init.lua** (entry point):
-   - Loads `lua/core/` files (options, keymaps, autocmds)
-   - Sets up Lazy.nvim plugin manager
-   - Loads all plugins from `lua/plugins/`
-   - Runs `lua/modules/init-modules.lua` to initialize features after plugins load
+The initialization sequence in `init.lua` is carefully ordered to prevent race conditions:
 
-2. **Plugin Loading Strategy**:
-   - Each plugin in `lua/plugins/` returns a Lazy.nvim spec
-   - Lazy.nvim uses lazy-loading (events, file types) to defer plugin initialization
-   - Core plugins (mason, lspconfig) load immediately for language support
+1. **Phase 1 - Core Configuration** (Lines 1-4):
+   ```lua
+   require "core.options"    -- Vim settings
+   require "core.keymaps"    -- Key bindings
+   require "core.autocmds"   -- Event handlers (registers ALL autocommands)
+   ```
 
-3. **Autocommand Organization**:
-   - `lua/core/autocmds.lua` contains all autocommands that trigger specific modules
-   - Examples: color column refresh on colorscheme change, line number updates on mode change
-   - Auto-formatting on BufWritePre, auto-linting on BufWritePost/InsertLeave
+2. **Phase 2 - Module Pre-loading** (Lines 6-19):
+   - All modules are `require`d but NOT initialized
+   - This loads module code into memory but doesn't execute initialization functions
+   - Critical: `modules.lazy` is loaded here to set up plugin manager
 
-### Code Organization Principles
+3. **Phase 3 - Plugin Registration** (Lines 21-42):
+   ```lua
+   require("modules.lazy").setup { ... }
+   ```
+   - Lazy.nvim loads all plugin specs from `lua/plugins/`
+   - Each plugin spec is a table with lazy-loading configuration
+   - Gitsigns, LSPConfig, Mason load immediately; others load on events/commands
 
-- **Core** = editor fundamentals (settings, keybinds, events)
-- **Modules** = self-contained features (auto-save, theme, styling)
-- **Plugins** = third-party integrations wrapped in Lazy specs
-- **One file per concern**: Easy to find and modify related code
+4. **Phase 4 - Module Initialization** (Line 45):
+   ```lua
+   require("modules.init-modules").initialize_modules()
+   ```
+   - **CRITICAL**: Only after plugins are loaded, theme-related modules initialize
+   - Order matters: colorscheme → cursor-line → line-numbers → winbar
+   - This ensures highlight groups exist before modules reference them
 
-## Common Development Tasks
+### Autocommand Architecture
 
-### View Configuration
+`lua/core/autocmds.lua` is the **central event hub** that connects Neovim events to module functions:
+
+- **Grouped by feature**: Each `augroup` corresponds to one module (winbar, line-numbers, cursor-line, etc.)
+- **Performance pattern**: Modules cache state and only update on changes (see `last_winbar`, `last_full_path`, etc.)
+- **Mode-aware highlighting**: Winbar and line numbers change colors based on vim mode (normal/insert/visual/replace)
+- **Oil.nvim integration**: Special handling for oil buffers (git branch detection via direct git command, not gitsigns)
+
+### Winbar System (Custom Status Line)
+
+The winbar (`lua/modules/win-bar.lua`) is a sophisticated, performance-optimized status line:
+
+**Architecture**:
+- **Independent components**: Each component (git branch, file path, status indicators) is cached separately
+- **Cache-first rendering**: Only updates `vim.wo.winbar` if the constructed string differs from last render
+- **Dual git branch detection**:
+  - Normal buffers: Uses `vim.b.gitsigns_head` from gitsigns plugin
+  - Oil.nvim buffers: Runs `git -C <dir> rev-parse --abbrev-ref HEAD` directly (gitsigns doesn't attach to oil)
+- **Mode-based colors**: Background changes based on mode (insert=green, visual=yellow, replace=red)
+
+**Key patterns to maintain**:
+- Always update cache variables before calling `set_win_bar()`
+- Use early returns for performance (`if not is_initialized`, `if full_path == last_full_path`)
+- Never call expensive operations in render loop
+
+### Module Initialization Pattern
+
+All visual modules follow this pattern:
+```lua
+local is_initialized = false
+function M.initialize_<feature>()
+    if is_initialized then return end
+    -- Set up initial state
+    is_initialized = true
+end
+```
+
+This prevents double-initialization and allows safe re-sourcing of init.lua.
+
+### Theme and Color System
+
+The configuration uses a coordinated color system across multiple modules:
+
+**Color Palette** (`lua/modules/color-palette.lua`):
+- Central source of truth for all colors
+- Provides `palette.dark.*` and `palette.light.*` color tables
+- Used by: winbar, line-numbers, cursor-line, colorscheme overrides
+- Colors reference the GitHub theme palette for consistency
+
+**Background Detection** (`lua/modules/theme-os.lua`):
+- Automatically syncs Neovim's background with macOS system theme
+- Uses a timer to poll system appearance every 500ms
+- Sets `vim.o.background` which triggers OptionSet autocmd
+
+**Highlight Namespaces** (`lua/modules/namespaces.lua`):
+- Creates separate namespaces for active/inactive window highlights
+- Allows per-window highlight customization for winbar and line numbers
+- Pattern: `vim.api.nvim_set_hl(namespace, "HighlightGroup", { ... })`
+
+**Theme update flow**:
+1. OS theme changes → `theme-os.lua` detects → sets `vim.o.background`
+2. OptionSet autocmd fires → triggers multiple module updates:
+   - `colorscheme.lua`: Switches GitHub theme variant
+   - `colorcolumn.lua`: Updates column color
+   - `cursor-line.lua`: Updates cursorline color
+   - `win-bar.lua`: Updates via WinEnter (gets mode-based color)
+
+## Configuration Reference
+
+### Quick Navigation
 
 - **Editor options** → `lua/core/options.lua`
 - **Key bindings** → `lua/core/keymaps.lua`
 - **Autocommands** → `lua/core/autocmds.lua`
 - **LSP servers** → `lua/modules/lsp.lua`
-- **Formatting rules** → `lua/plugins/formatting.lua`
-- **Linting rules** → `lua/plugins/linting.lua`
+- **Formatters** → `lua/plugins/formatting.lua` (Conform.nvim, runs on save)
+- **Linters** → `lua/plugins/linting.lua` (nvim-lint, runs on write/InsertLeave)
 
-### Edit LSP Configuration
+### Adding Language Support
 
-LSP servers are defined in `lua/modules/lsp.lua` with their on_attach handlers. To add a new server:
+**LSP servers** are configured in two places:
+1. `lua/modules/lsp.lua`: Add to `vim.lsp.enable { ... }` list
+2. `lua/plugins/mason.lua`: Add to `ensure_installed` under `mason_lspconfig`
 
-1. Add server config in `lsp.lua`
-2. Ensure Mason installs it in `lua/plugins/mason.lua` (if available)
-3. Add key bindings if needed in `lua/core/keymaps.lua`
+**Formatters** (`lua/plugins/formatting.lua`):
+- Python: `ruff_format` + `ruff_organize_imports`
+- JS/TS/HTML/CSS/JSON/MD: `prettier`
+- Lua: `stylua` (configured in `stylua.toml`)
+- C/C++: `clang-format`
 
-### Format/Lint Configuration
+**Linters** (`lua/plugins/linting.lua`):
+- Python: `ruff`
+- Lua: `luacheck`
+- JS/TS: `eslint_d`
 
-- **Formatting**: `lua/plugins/formatting.lua` - Uses Conform.nvim, runs on `:w`
-- **Linting**: `lua/plugins/linting.lua` - Uses Nvim-lint, runs on write/insert leave
-- **Formatters by language**:
-  - Python: `ruff_format` + `ruff_organize_imports`
-  - JS/TS/HTML/CSS/JSON/MD: `prettier`
-  - Lua: `stylua` (uses `stylua.toml`)
-  - C/C++: `clang-format`
+### Adding New Plugins
 
-### Add a New Plugin
+Create `lua/plugins/plugin-name.lua` with a Lazy.nvim spec:
+```lua
+-- Brief description of what the plugin does
+return {
+    "author/plugin-name",
+    event = "VeryLazy",  -- or other lazy-load trigger
+    config = function()
+        require("plugin-name").setup {}
+    end,
+}
+```
 
-1. Create `lua/plugins/plugin-name.lua`
-2. Return a Lazy.nvim spec table:
-   ```lua
-   return {
-     "author/plugin-name",
-     event = "VeryLazy",  -- or other lazy-load event
-     config = function()
-       -- setup code
-     end,
-   }
-   ```
-3. If the plugin needs a module, create `lua/modules/plugin-name.lua`
-
-### Install a New Language Tool
-
-Edit `lua/plugins/mason.lua`:
-
-- Add LSP server name to `ensure_installed` list under `lspconfig`
-- Add linter/formatter to appropriate section
-- Mason will auto-install on next startup
+Then add `require "plugins.plugin-name"` to the plugin list in `init.lua`.
 
 ## Key Plugins and Their Roles
 
@@ -137,15 +204,14 @@ Edit `lua/plugins/mason.lua`:
 | GitHub Theme | Color scheme        | lua/plugins/colorscheme.lua  |
 | Copilot      | AI assistance       | lua/plugins/copilot.lua      |
 
-## Testing and Validation
+## Validation Commands
 
-**There are no automated tests.** Configuration is validated by:
+**There are no automated tests.** Manual validation:
 
-1. Ensuring init.lua loads without errors (`:e init.lua`)
-2. Checking LSP servers start (`:LspInfo`)
-3. Testing formatters work (`:Format`)
-4. Testing linters (`:Lint`)
-5. Manual testing of key plugins
+- `:checkhealth` - Verify Neovim installation and plugin health
+- `:LspInfo` - Check LSP server status
+- `:Lazy` - View plugin status and updates
+- `:Mason` - Manage installed tools
 
 ## Code Style
 
@@ -154,27 +220,59 @@ Edit `lua/plugins/mason.lua`:
 - **Line length**: No hard limit specified
 - Format with: `stylua lua/`
 
-## Git Status
+### Comment Style Guidelines
 
-This is a personal configuration repo. Common uncommitted files:
+Comments throughout the codebase follow these patterns:
 
-- `lazy-lock.json` - Plugin lock file (updated when plugins change)
-- `lua/plugins/file-tree.lua` - Neo-tree state
-- `lua/plugins/oil.lua` - Oil.nvim state
-- `../karabiner/` - Unrelated macOS keyboard config
+1. **Header comments**: Plugin files and modules start with concise purpose statements
+   ```lua
+   -- Modern completion engine with snippet support
+   return { ... }
+   ```
 
-## Important Notes
+2. **Function documentation**: Include purpose and parameters for non-obvious functions
+   ```lua
+   -- Update colorscheme to match current background setting (light/dark)
+   -- Only updates if background has changed (performance optimization)
+   function M.update_colorscheme(is_init)
+   ```
 
-1. **Lua LSP**: Configured via `.luarc.json` for editor integration
-2. **Auto-save**: Enabled on InsertLeave and BufLeave; configure in `lua/modules/auto-save.lua`
-3. **Theme**: Automatically switches based on OS background (dark/light); see `lua/modules/theme-os.lua`
-4. **Key Leader**: Space character (set in `lua/core/keymaps.lua`)
-5. **LSP Keymaps**: Currently minimal; more LSP features are listed in `todo.md` for future work
-6. **Performance**: Lazy.nvim defers plugin loading for fast startup; check `lazy.nvim()` calls in plugin specs
+3. **Section headers in autocmds**: Use separator lines to group related autocommands
+   ```lua
+   --------------------------------------------------------------------------------
+   -- Winbar management (file path, git branch, and status indicators)
+   --------------------------------------------------------------------------------
+   ```
 
-## Future Work (from todo.md)
+4. **Inline comments**: Brief explanations for non-obvious logic
+   ```lua
+   file_path = file_path:gsub("^%.$", "") -- Remove "." for cwd root
+   ```
 
-- [ ] Custom delimiter selection (like vap/vip for paragraphs)
-- [ ] Expand LSP keymaps (go to references, implementations, etc.)
-- [ ] Configure diagnostics appearance
-- [ ] Set up quick fix, jumplist, vim marks features
+5. **What to avoid**:
+   - Don't state the obvious (e.g., `-- Set variable` before `x = 5`)
+   - Don't use vague phrases like "This also detects" or "certain filetypes"
+   - Keep comments concise; prefer clear code over long explanations
+
+## Important Implementation Details
+
+**Lua LSP Configuration**:
+- `.luarc.json` provides workspace settings for lua_ls
+- Includes Neovim runtime path for vim API completions
+
+**Auto-save Behavior**:
+- Triggers on InsertLeave and BufLeave (see `lua/core/autocmds.lua`)
+- Toggle with `<leader>ts` (defined in `lua/modules/auto-save.lua`)
+- Indicator shows "S" in winbar when enabled
+
+**Theme Synchronization**:
+- `lua/modules/theme-os.lua` polls macOS system appearance every 500ms
+- Automatically sets `vim.o.background` to "light" or "dark"
+- This triggers a cascade of highlight updates across all modules
+
+**Key Leader**: Space character (`vim.g.mapleader = " "` in `lua/core/keymaps.lua`)
+
+**Git Tracking**:
+- This is a personal configuration repository
+- `lazy-lock.json` is tracked and should be committed when plugins update
+- Untracked: Temporary plugin state files
