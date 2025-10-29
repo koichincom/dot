@@ -1,9 +1,14 @@
 local M = {}
 
--- For performance, each component is cached and updated only when necessary
+-- Performance strategy: Cache each winbar component independently and update only when changed
+-- This avoids expensive string concatenation and highlight calculations on every render
 
 local git_branch = ""
 local git_branch_init = false
+-- Update the cached git branch name from gitsigns buffer variable
+-- Parameters:
+--   is_init_from_gitsigns: true when called from gitsigns attach callback (enables subsequent updates)
+--   execute_set_win_bar: true to trigger winbar reconstruction after updating branch
 function M.set_git_branch(is_init_from_gitsigns, execute_set_win_bar)
     if is_init_from_gitsigns then
         git_branch_init = true
@@ -11,7 +16,7 @@ function M.set_git_branch(is_init_from_gitsigns, execute_set_win_bar)
     if not git_branch_init then
         return
     end
-    -- This also detects "oil:" for the root directory
+    -- Get branch name from gitsigns (works for both normal buffers and oil.nvim directory buffers)
     local ok, head = pcall(function()
         return vim.b.gitsigns_head
     end)
@@ -338,6 +343,7 @@ function M.set_win_bar(is_init)
     local winbar = table.concat {
         -- Left
         "%#WinBar#",
+        " ",
         git_branch,
 
         -- Center
@@ -361,6 +367,7 @@ function M.set_win_bar(is_init)
         wrap_status,
         right_spacing_3,
         copilot_status,
+        " ",
     }
     if winbar == last_winbar then
         return

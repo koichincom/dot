@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/koichi/.local/share/nvim/lazy/oil.nvim/doc/**)",
+      "Read(//Users/koichi/.local/share/nvim/lazy/oil.nvim/lua/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

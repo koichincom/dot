@@ -21,4 +21,5 @@ vim.lsp.enable {
     "html",
     "cssls",
     "jsonls",
+    "zls",
 }

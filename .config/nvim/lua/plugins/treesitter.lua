@@ -24,7 +24,6 @@ return {
                 "typescript",
                 "tsv",
                 "yaml",
-                "zig",
             },
             highlight = {
                 enable = true,
