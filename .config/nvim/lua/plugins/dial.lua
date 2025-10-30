@@ -21,12 +21,7 @@ return {
                     cyclic = true,
                 },
                 augend.constant.new {
-                    elements = { "def", "async def" },
-                    word = true,
-                    cyclic = true,
-                },
-                augend.constant.new {
-                    elements = { "else", "elif" },
+                    elements = { "else", "elif", "if" },
                     word = true,
                     cyclic = true,
                 },
@@ -54,19 +49,6 @@ return {
                     cyclic = true,
                 },
             },
-            c = {
-                augend.integer.alias.decimal,
-                augend.constant.new {
-                    elements = { "true", "false" },
-                    word = true,
-                    cyclic = true,
-                },
-                augend.constant.new {
-                    elements = { "int", "float", "double", "char", "bool", "void" },
-                    word = true,
-                    cyclic = true,
-                },
-            },
             markdown = {
                 augend.integer.alias.decimal,
                 augend.constant.new {
@@ -77,7 +59,7 @@ return {
             },
         }
 
-        -- Necessary keymaps
+        -- Required keymaps to enable dial.nvim functionality
         vim.keymap.set("n", "<C-a>", function()
             require("dial.map").manipulate("increment", "normal")
         end, { desc = "Increment" })

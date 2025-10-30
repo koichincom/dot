@@ -48,6 +48,7 @@ lua/
 The initialization sequence in `init.lua` is carefully ordered to prevent race conditions:
 
 1. **Phase 1 - Core Configuration** (Lines 1-4):
+
    ```lua
    require "core.options"    -- Vim settings
    require "core.keymaps"    -- Key bindings
@@ -60,17 +61,21 @@ The initialization sequence in `init.lua` is carefully ordered to prevent race c
    - Critical: `modules.lazy` is loaded here to set up plugin manager
 
 3. **Phase 3 - Plugin Registration** (Lines 21-42):
+
    ```lua
    require("modules.lazy").setup { ... }
    ```
+
    - Lazy.nvim loads all plugin specs from `lua/plugins/`
    - Each plugin spec is a table with lazy-loading configuration
    - Gitsigns, LSPConfig, Mason load immediately; others load on events/commands
 
 4. **Phase 4 - Module Initialization** (Line 45):
+
    ```lua
    require("modules.init-modules").initialize_modules()
    ```
+
    - **CRITICAL**: Only after plugins are loaded, theme-related modules initialize
    - Order matters: colorscheme → cursor-line → line-numbers → winbar
    - This ensures highlight groups exist before modules reference them
@@ -89,6 +94,7 @@ The initialization sequence in `init.lua` is carefully ordered to prevent race c
 The winbar (`lua/modules/win-bar.lua`) is a sophisticated, performance-optimized status line:
 
 **Architecture**:
+
 - **Independent components**: Each component (git branch, file path, status indicators) is cached separately
 - **Cache-first rendering**: Only updates `vim.wo.winbar` if the constructed string differs from last render
 - **Dual git branch detection**:
@@ -97,6 +103,7 @@ The winbar (`lua/modules/win-bar.lua`) is a sophisticated, performance-optimized
 - **Mode-based colors**: Background changes based on mode (insert=green, visual=yellow, replace=red)
 
 **Key patterns to maintain**:
+
 - Always update cache variables before calling `set_win_bar()`
 - Use early returns for performance (`if not is_initialized`, `if full_path == last_full_path`)
 - Never call expensive operations in render loop
@@ -104,6 +111,7 @@ The winbar (`lua/modules/win-bar.lua`) is a sophisticated, performance-optimized
 ### Module Initialization Pattern
 
 All visual modules follow this pattern:
+
 ```lua
 local is_initialized = false
 function M.initialize_<feature>()
@@ -120,22 +128,26 @@ This prevents double-initialization and allows safe re-sourcing of init.lua.
 The configuration uses a coordinated color system across multiple modules:
 
 **Color Palette** (`lua/modules/color-palette.lua`):
+
 - Central source of truth for all colors
 - Provides `palette.dark.*` and `palette.light.*` color tables
 - Used by: winbar, line-numbers, cursor-line, colorscheme overrides
 - Colors reference the GitHub theme palette for consistency
 
 **Background Detection** (`lua/modules/theme-os.lua`):
+
 - Automatically syncs Neovim's background with macOS system theme
 - Uses a timer to poll system appearance every 500ms
 - Sets `vim.o.background` which triggers OptionSet autocmd
 
 **Highlight Namespaces** (`lua/modules/namespaces.lua`):
+
 - Creates separate namespaces for active/inactive window highlights
 - Allows per-window highlight customization for winbar and line numbers
 - Pattern: `vim.api.nvim_set_hl(namespace, "HighlightGroup", { ... })`
 
 **Theme update flow**:
+
 1. OS theme changes → `theme-os.lua` detects → sets `vim.o.background`
 2. OptionSet autocmd fires → triggers multiple module updates:
    - `colorscheme.lua`: Switches GitHub theme variant
@@ -157,16 +169,19 @@ The configuration uses a coordinated color system across multiple modules:
 ### Adding Language Support
 
 **LSP servers** are configured in two places:
+
 1. `lua/modules/lsp.lua`: Add to `vim.lsp.enable { ... }` list
 2. `lua/plugins/mason.lua`: Add to `ensure_installed` under `mason_lspconfig`
 
 **Formatters** (`lua/plugins/formatting.lua`):
+
 - Python: `ruff_format` + `ruff_organize_imports`
 - JS/TS/HTML/CSS/JSON/MD: `prettier`
 - Lua: `stylua` (configured in `stylua.toml`)
 - C/C++: `clang-format`
 
 **Linters** (`lua/plugins/linting.lua`):
+
 - Python: `ruff`
 - Lua: `luacheck`
 - JS/TS: `eslint_d`
@@ -174,6 +189,7 @@ The configuration uses a coordinated color system across multiple modules:
 ### Adding New Plugins
 
 Create `lua/plugins/plugin-name.lua` with a Lazy.nvim spec:
+
 ```lua
 -- Brief description of what the plugin does
 return {
@@ -225,12 +241,14 @@ Then add `require "plugins.plugin-name"` to the plugin list in `init.lua`.
 Comments throughout the codebase follow these patterns:
 
 1. **Header comments**: Plugin files and modules start with concise purpose statements
+
    ```lua
    -- Modern completion engine with snippet support
    return { ... }
    ```
 
 2. **Function documentation**: Include purpose and parameters for non-obvious functions
+
    ```lua
    -- Update colorscheme to match current background setting (light/dark)
    -- Only updates if background has changed (performance optimization)
@@ -238,6 +256,7 @@ Comments throughout the codebase follow these patterns:
    ```
 
 3. **Section headers in autocmds**: Use separator lines to group related autocommands
+
    ```lua
    --------------------------------------------------------------------------------
    -- Winbar management (file path, git branch, and status indicators)
@@ -245,6 +264,7 @@ Comments throughout the codebase follow these patterns:
    ```
 
 4. **Inline comments**: Brief explanations for non-obvious logic
+
    ```lua
    file_path = file_path:gsub("^%.$", "") -- Remove "." for cwd root
    ```
@@ -257,15 +277,18 @@ Comments throughout the codebase follow these patterns:
 ## Important Implementation Details
 
 **Lua LSP Configuration**:
+
 - `.luarc.json` provides workspace settings for lua_ls
 - Includes Neovim runtime path for vim API completions
 
 **Auto-save Behavior**:
+
 - Triggers on InsertLeave and BufLeave (see `lua/core/autocmds.lua`)
 - Toggle with `<leader>ts` (defined in `lua/modules/auto-save.lua`)
 - Indicator shows "S" in winbar when enabled
 
 **Theme Synchronization**:
+
 - `lua/modules/theme-os.lua` polls macOS system appearance every 500ms
 - Automatically sets `vim.o.background` to "light" or "dark"
 - This triggers a cascade of highlight updates across all modules
@@ -273,6 +296,7 @@ Comments throughout the codebase follow these patterns:
 **Key Leader**: Space character (`vim.g.mapleader = " "` in `lua/core/keymaps.lua`)
 
 **Git Tracking**:
+
 - This is a personal configuration repository
 - `lazy-lock.json` is tracked and should be committed when plugins update
 - Untracked: Temporary plugin state files

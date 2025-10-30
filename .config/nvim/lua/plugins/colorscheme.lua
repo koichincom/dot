@@ -21,19 +21,26 @@ return {
                 },
                 groups = {
                     github_light_default = {
-                        -- For Oil.nvim buffer
+                        -- oil.nvim buffer
                         Directory = { fg = palette.light.gray[9] },
                         OilFile = { fg = palette.light.blue[5] },
+
+                        -- listchars
+                        -- space, multispace, leadmultispace, lead, trail, and nbsp
+                        -- Whitespace = { fg = palette.light.gray[3] },
+                        -- SpecialKey = { fg = palette.light.gray[4] }, -- tab
+                        -- NonText = { fg = palette.light.pink[2] }, -- eol, extends, precedes
                     },
                     github_dark_dimmed = {
-                        -- For Oil.nvim buffer
+                        -- oil.nvim buffer
                         Directory = { fg = palette.dark.gray[0] },
                         OilFile = { fg = palette.dark.gray[1] },
 
-                        -- Override some code colors
-                        -- ["@variable"] = { fg = palette.dark.gray[0] },
-                        -- ["@variable.builtin"] = { fg = palette.dark.gray[0] },
-                        -- ["@property"] = { fg = palette.dark.gray[0] },
+                        -- listchars
+                        -- space, multispace, leadmultispace, lead, trail, and nbsp
+                        -- Whitespace = { fg = palette.light.gray[3] },
+                        -- SpecialKey = { fg = palette.light.gray[4] }, -- tab
+                        -- NonText = { fg = palette.light.pink[2] }, -- eol, extends, precedes
                     },
                 },
             }

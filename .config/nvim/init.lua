@@ -17,6 +17,7 @@ require "modules.modes"
 require "modules.color-palette"
 require "modules.wrap"
 require "modules.namespaces"
+require "modules.list"
 
 -- Plugins with Lazy.nvim
 require("modules.lazy").setup {
@@ -29,7 +30,6 @@ require("modules.lazy").setup {
     require "plugins.formatting",
     require "plugins.fuzzy-finder",
     require "plugins.gitsigns",
-    require "plugins.indent-guides",
     require "plugins.linting",
     require "plugins.lspconfig",
     require "plugins.mason",

@@ -4,6 +4,7 @@ local M = {}
 -- This avoids expensive string concatenation and highlight calculations on every render
 
 local git_branch = ""
+
 local git_branch_init = false
 -- Update the cached git branch name from gitsigns buffer variable
 -- Parameters:

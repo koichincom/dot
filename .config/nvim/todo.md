@@ -4,3 +4,4 @@
 - [ ] Feature: LSP-related keymaps, such as go to definition, reference etc.
 - [ ] Feature: configure diagnostics appearance in options.lua
 - [ ] Feature: check quick fix, jumplist, vim marks features and configure them
+- [ ] Improvement: Add word count feature in winbar in markdown files

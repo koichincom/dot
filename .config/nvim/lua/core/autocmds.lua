@@ -1,4 +1,7 @@
--- Automatically reload files changed outside of Neovim
+--------------------------------------------------------------------------------
+-- Auto-reload files changed outside of Neovim (e.g. by coding agents)
+--------------------------------------------------------------------------------
+
 vim.opt.autoread = true -- Set by vim.opt (not always reliable, so set autocmd)
 vim.api.nvim_create_autocmd({ "FocusGained", "BufEnter", "WinEnter", "BufWinEnter" }, {
     pattern = { "*" },
@@ -318,7 +321,8 @@ vim.api.nvim_create_autocmd("WinEnter", {
 })
 
 --------------------------------------------------------------------------------
-
+-- Wrap management (enables text wrapping for markdown, text, and tex files)
+--------------------------------------------------------------------------------
 local wrap = vim.api.nvim_create_augroup("Wrap", { clear = true })
 local module_wrap = require "modules.wrap"
 
@@ -339,5 +343,19 @@ vim.api.nvim_create_autocmd("BufEnter", {
                 module_wrap.wrap_off()
             end
         end
+    end,
+})
+
+--------------------------------------------------------------------------------
+-- List characters management (updates leadmultispace when shiftwidth changes)
+--------------------------------------------------------------------------------
+local list_chars = vim.api.nvim_create_augroup("ListChars", { clear = true })
+local module_list = require "modules.list"
+
+vim.api.nvim_create_autocmd("OptionSet", {
+    group = list_chars,
+    pattern = "shiftwidth",
+    callback = function()
+        module_list.update_leadmultispace()
     end,
 })
