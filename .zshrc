@@ -1,7 +1,7 @@
 Alias
-alias proj='cd ~/Projects'
-alias config='cd ~/.config'
-alias nvim='nvim .'
+alias n='nvim .'
+alias p='cd ~/Projects'
+alias c='cd ~/.config'
 
 # Default editor
 export EDITOR='nvim'

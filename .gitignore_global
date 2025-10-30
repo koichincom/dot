@@ -1,3 +1,6 @@
+# Global .gitignore file
+# Only list files and directories which should be ignored all the time 
+
 # MacOS system files
 .DS_Store
 .AppleDouble
@@ -40,6 +43,3 @@ build/
 .env.local
 .dccache
 npm-debug.log*
-
-# Configuration
-.claude/

@@ -1,7 +1,9 @@
-# Appearance
 font-family = "JetBrainsMonoNL Nerd Font"
+font-family = "Zen Kaku Gothic New"
 font-size = 20
 theme = dark:"GitHub Dark Dimmed", light:"Github Light Default"
-
 mouse-hide-while-typing = true
 macos-titlebar-style = tabs
+maximize = true
+keybind = global:ctrl+grave_accent=toggle_quick_terminal
+quick-terminal-animation-duration = 0

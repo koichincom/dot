@@ -1,12 +1,15 @@
 local wezterm = require "wezterm"
 local config = wezterm.config_builder()
 
+-- FPS
+config.max_fps = 255
+
 -- Font
 config.font = wezterm.font_with_fallback {
   {
     -- JetBrainsMono should be monospaced, but nerd font should not
     family = "JetBrainsMonoNL Nerd Font",
-    weight = "Medium",
+    weight = 401,
     harfbuzz_features = { "calt=1", "clig=1", "liga=1" },
   },
   {
@@ -15,7 +18,7 @@ config.font = wezterm.font_with_fallback {
     harfbuzz_features = { "calt=1", "clig=1", "liga=1" },
   },
 }
-config.font_size = 18
+config.font_size = 20
 config.adjust_window_size_when_changing_font_size = false
 
 -- Window
@@ -27,9 +30,36 @@ config.window_padding = {
 }
 
 -- Keys
+-- Keys
 config.keys = {
   -- Replace CTRL-TAB with CTRL-^, so I can switch buffers in neovim
   { key = "Tab", mods = "CTRL", action = wezterm.action.SendString "\x1e" },
+
+  -- Workspace: Show launcher to list/switch/create workspaces
+  {
+    key = "w",
+    mods = "CTRL|SHIFT",
+    action = wezterm.action.ShowLauncherArgs { flags = "FUZZY|WORKSPACES" },
+  },
+
+  -- Workspace: Create new workspace with prompt
+  {
+    key = "n",
+    mods = "CTRL|SHIFT|ALT",
+    action = wezterm.action.PromptInputLine {
+      description = "Enter name for new workspace:",
+      action = wezterm.action_callback(function(window, pane, line)
+        if line then
+          window:perform_action(
+            wezterm.action.SwitchToWorkspace {
+              name = line,
+            },
+            pane
+          )
+        end
+      end),
+    },
+  },
 }
 
 -- Theme definitions
