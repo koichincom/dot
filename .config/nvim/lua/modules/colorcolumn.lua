@@ -11,13 +11,13 @@ function M.update_colorcolumn(buf_type)
 end
 
 local palette = require "modules.color-palette"
+local theme_hl = require "modules.theme-highlight"
+
 function M.update_colorcolumn_background()
-    local background = vim.o.background
-    if background == "light" then
-        vim.api.nvim_set_hl(0, "ColorColumn", { bg = palette.light.gray[2] })
-    else
-        vim.api.nvim_set_hl(0, "ColorColumn", { bg = palette.dark.gray[8] })
-    end
+    theme_hl.set(0, "ColorColumn", {
+        dark = { bg = palette.dark.gray[8] },
+        light = { bg = palette.light.gray[2] },
+    })
 end
 
 return M

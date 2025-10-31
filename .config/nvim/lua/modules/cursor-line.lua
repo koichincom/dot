@@ -3,18 +3,23 @@ local M = {}
 vim.o.cursorline = true -- Initilize
 local is_initialized = false
 local palette = require "modules.color-palette"
+local theme_hl = require "modules.theme-highlight"
 
 function M.update_cursorline(is_init)
     if not is_initialized and not is_init then
         return
     end
-    if vim.o.background == "dark" then
-        vim.api.nvim_set_hl(0, "CursorLine", { bg = palette.dark.gray[8] })
-        vim.api.nvim_set_hl(0, "CursorLineNr", { fg = palette.dark.basics.fg })
-    else
-        vim.api.nvim_set_hl(0, "CursorLine", { bg = palette.light.gray[2] })
-        vim.api.nvim_set_hl(0, "CursorLineNr", { fg = palette.light.basics.fg })
-    end
+
+    theme_hl.set_multiple(0, {
+        CursorLine = {
+            dark = { bg = palette.dark.gray[8] },
+            light = { bg = palette.light.gray[2] },
+        },
+        CursorLineNr = {
+            dark = { fg = palette.dark.basics.fg },
+            light = { fg = palette.light.basics.fg },
+        },
+    })
 end
 
 function M.cursorline_on()

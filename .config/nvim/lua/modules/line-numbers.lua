@@ -2,47 +2,30 @@ local M = {}
 
 local is_initialized = false
 local palette = require "modules.color-palette"
+local theme_hl = require "modules.theme-highlight"
 
 local active_ns = require("modules.namespaces").active
 function M.set_active_line_number_highlight(is_init, mode)
     if not is_initialized and not is_init then
         return
     end
-    if vim.o.background == "dark" then
-        if mode == "normal" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.dark.blue[3] })
-        end
-        if mode == "insert" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.dark.green[3] })
-        end
-        if mode == "visual" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.dark.yellow[3] })
-        end
-        if mode == "replace" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.dark.red[3] })
-        end
-        if mode == "command" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.dark.purple[3] })
-        end
-    elseif vim.o.background == "light" then
-        if mode == "normal" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.light.blue[3] })
-        end
-        if mode == "insert" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.light.green[3] })
-        end
-        if mode == "visual" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.light.yellow[3] })
-        end
-        if mode == "replace" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.light.red[3] })
-        end
-        if mode == "command" then
-            vim.api.nvim_set_hl(active_ns, "LineNr", { fg = palette.light.purple[3] })
-        end
-    else
-        vim.notify("Unknown background setting: " .. vim.o.background, vim.log.levels.WARN)
+
+    local mode_colors = {
+        normal = { dark = palette.dark.blue[3], light = palette.light.blue[3] },
+        insert = { dark = palette.dark.green[3], light = palette.light.green[3] },
+        visual = { dark = palette.dark.yellow[3], light = palette.light.yellow[3] },
+        replace = { dark = palette.dark.red[3], light = palette.light.red[3] },
+        command = { dark = palette.dark.purple[3], light = palette.light.purple[3] }
+    }
+
+    local colors = mode_colors[mode]
+    if colors then
+        theme_hl.set(active_ns, "LineNr", {
+            dark = { fg = colors.dark },
+            light = { fg = colors.light }
+        })
     end
+
     local current_win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_hl_ns(current_win, active_ns)
 end
@@ -52,14 +35,12 @@ function M.set_inactive_line_number_highlight()
     if not is_initialized then
         return
     end
-    if vim.o.background == "dark" then
-        vim.api.nvim_set_hl(inactive_ns, "LineNr", { fg = palette.dark.gray[3] })
-    elseif vim.o.background == "light" then
-        vim.api.nvim_set_hl(inactive_ns, "LineNr", { fg = palette.light.gray[9] })
-    else
-        vim.notify("Unknown background setting: " .. vim.o.background, vim.log.levels.WARN)
-        return
-    end
+
+    theme_hl.set(inactive_ns, "LineNr", {
+        dark = { fg = palette.dark.gray[3] },
+        light = { fg = palette.light.gray[9] }
+    })
+
     local current_win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_hl_ns(current_win, inactive_ns)
 end

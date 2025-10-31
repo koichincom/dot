@@ -4,42 +4,53 @@ require "core.keymaps"
 require "core.autocmds"
 
 -- Modules
-require "modules.lazy"
-require "modules.init-modules"
-require "modules.lsp"
-require "modules.auto-save"
-require "modules.colorscheme"
-require "modules.cursor-line"
-require "modules.win-bar"
-require "modules.theme-os"
-require "modules.line-numbers"
-require "modules.modes"
-require "modules.color-palette"
-require "modules.wrap"
-require "modules.namespaces"
-require "modules.list"
+local modules = {
+    "lazy",
+    "init-modules",
+    "lsp",
+    "auto-save",
+    "colorscheme",
+    "cursor-line",
+    "win-bar",
+    "theme-os",
+    "line-numbers",
+    "modes",
+    "color-palette",
+    "theme-highlight",
+    "wrap",
+    "namespaces",
+    "list",
+}
+for _, module in ipairs(modules) do
+    require("modules." .. module)
+end
 
 -- Plugins with Lazy.nvim
-require("modules.lazy").setup {
-    require "plugins.autopairs",
-    require "plugins.colorscheme",
-    require "plugins.comment",
-    require "plugins.completion",
-    require "plugins.copilot",
-    require "plugins.oil",
-    require "plugins.formatting",
-    require "plugins.fuzzy-finder",
-    require "plugins.gitsigns",
-    require "plugins.linting",
-    require "plugins.lspconfig",
-    require "plugins.mason",
-    require "plugins.noice",
-    require "plugins.surround",
-    require "plugins.treesitter",
-    require "plugins.dial",
-    require "plugins.discord",
-    require "plugins.file-tree",
+local plugins = {
+    "autopairs",
+    "colorscheme",
+    "comment",
+    "completion",
+    "copilot",
+    "oil",
+    "formatting",
+    "fuzzy-finder",
+    "gitsigns",
+    "linting",
+    "lspconfig",
+    "mason",
+    "noice",
+    "surround",
+    "treesitter",
+    "dial",
+    "discord",
+    "file-tree",
 }
+local plugin_specs = {}
+for _, plugin in ipairs(plugins) do
+    table.insert(plugin_specs, require("plugins." .. plugin))
+end
+require("modules.lazy").setup(plugin_specs)
 
 -- After everything is loaded
 require("modules.init-modules").initialize_modules()

@@ -1,7 +1,27 @@
 local M = {}
 
--- Performance strategy: Cache each winbar component independently and update only when changed
--- This avoids expensive string concatenation and highlight calculations on every render
+-- Performance strategy: Two-layer optimization for maximum efficiency
+-- 1. Component caching: Each component (git branch, path, status) cached independently
+-- 2. Debounced updates: Multiple rapid setter calls batched into single winbar rebuild
+
+-- Debouncing mechanism: batch multiple rapid updates into a single rebuild
+local pending_winbar_update = false
+
+-- Execute the actual winbar rebuild (called by vim.schedule after debouncing)
+local function do_winbar_update()
+    pending_winbar_update = false
+    M.set_win_bar(false)
+end
+
+-- Schedule a debounced winbar update (skips if already scheduled)
+-- All setter functions call this instead of M.set_win_bar() directly
+local function schedule_winbar_update()
+    if pending_winbar_update then
+        return -- Already scheduled, skip redundant rebuild
+    end
+    pending_winbar_update = true
+    vim.schedule(do_winbar_update)
+end
 
 local git_branch = ""
 
@@ -9,7 +29,7 @@ local git_branch_init = false
 -- Update the cached git branch name from gitsigns buffer variable
 -- Parameters:
 --   is_init_from_gitsigns: true when called from gitsigns attach callback (enables subsequent updates)
---   execute_set_win_bar: true to trigger winbar reconstruction after updating branch
+--   execute_set_win_bar: true to trigger debounced winbar update after updating branch
 function M.set_git_branch(is_init_from_gitsigns, execute_set_win_bar)
     if is_init_from_gitsigns then
         git_branch_init = true
@@ -52,7 +72,7 @@ function M.set_git_branch(is_init_from_gitsigns, execute_set_win_bar)
     end
 
     if execute_set_win_bar then
-        M.set_win_bar(false)
+        schedule_winbar_update()
     end
 end
 
@@ -60,7 +80,7 @@ end
 -- Kept for potential future use with special buffers where git context is inappropriate
 function M.clear_git_branch()
     git_branch = ""
-    M.set_win_bar(false)
+    schedule_winbar_update()
 end
 
 local file_path = ""
@@ -106,7 +126,7 @@ function M.set_file_path_name()
         file_name = string.sub(file_name, 1, #file_name - 1)
     end
 
-    M.set_win_bar(false)
+    schedule_winbar_update()
 end
 
 -- File encoding indicator (shown as "[encoding-name]" for non-UTF-8 files only)
@@ -118,7 +138,7 @@ function M.set_encode_status()
     else
         encode = ""
     end
-    M.set_win_bar(false)
+    schedule_winbar_update()
 end
 
 -- File modification indicator (shown as "M" for unsaved changes)
@@ -129,7 +149,7 @@ function M.set_file_modified_status()
     else
         file_modified = ""
     end
-    M.set_win_bar(false)
+    schedule_winbar_update()
 end
 
 -- Auto-save status indicator (shown as "S" when enabled)
@@ -140,7 +160,7 @@ function M.set_auto_save_status(is_enabled)
     else
         auto_save_status = ""
     end
-    M.set_win_bar(false)
+    schedule_winbar_update()
 end
 
 -- Copilot status indicator (shown as "C" when enabled)
@@ -151,7 +171,7 @@ function M.set_copilot_status(is_enabled)
     else
         copilot_status = ""
     end
-    M.set_win_bar(false)
+    schedule_winbar_update()
 end
 
 -- Line wrap status indicator (shown as "W" when wrap is enabled)
@@ -162,11 +182,12 @@ function M.set_wrap_status(is_enabled)
     else
         wrap_status = ""
     end
-    M.set_win_bar(false)
+    schedule_winbar_update()
 end
 
 local is_initialized = false
 local palette = require "modules.color-palette"
+local theme_hl = require "modules.theme-highlight"
 
 local active_ns = require("modules.namespaces").active
 -- Set mode-specific background colors for the active window's winbar
@@ -178,125 +199,37 @@ function M.set_active_winbar_highlight(is_init, mode)
     if not is_initialized and not is_init then
         return
     end
-    if vim.o.background == "dark" then
-        vim.api.nvim_set_hl(
-            active_ns,
-            "WinBarFileName",
-            { fg = palette.dark.gray[0], bg = palette.dark.bg, nocombine = true }
-        )
-        if mode == "normal" then
-            vim.api.nvim_set_hl(active_ns, "WinBar", { fg = palette.dark.fg, bg = palette.dark.bg, nocombine = true })
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.dark.syntax.keyword, bg = palette.dark.bg, nocombine = true }
-            )
-        elseif mode == "insert" then
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.dark.fg, bg = palette.dark.green[6], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.dark.syntax.keyword, bg = palette.dark.green[6], nocombine = true }
-            )
-        elseif mode == "visual" then
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.dark.fg, bg = palette.dark.yellow[6], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.dark.syntax.keyword, bg = palette.dark.yellow[6], nocombine = true }
-            )
-        elseif mode == "replace" then
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.dark.fg, bg = palette.dark.red[6], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.dark.syntax.keyword, bg = palette.dark.red[6], nocombine = true }
-            )
-        else
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.dark.fg, bg = palette.dark.purple[6], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.dark.syntax.keyword, bg = palette.dark.purple[6], nocombine = true }
-            )
-        end
-    elseif vim.o.background == "light" then
-        vim.api.nvim_set_hl(
-            active_ns,
-            "WinBarFileName",
-            { fg = palette.light.fg, bg = palette.light.bg, nocombine = true }
-        )
-        if mode == "normal" then
-            vim.api.nvim_set_hl(active_ns, "WinBar", { fg = palette.light.fg, bg = palette.light.bg, nocombine = true })
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.light.syntax.keyword, bg = palette.light.bg, nocombine = true }
-            )
-        elseif mode == "insert" then
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.light.fg, bg = palette.light.green[1], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.light.syntax.keyword, bg = palette.light.green[1], nocombine = true }
-            )
-        elseif mode == "visual" then
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.light.fg, bg = palette.light.yellow[1], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.light.syntax.keyword, bg = palette.light.yellow[1], nocombine = true }
-            )
-        elseif mode == "replace" then
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.light.fg, bg = palette.light.red[1], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.light.syntax.keyword, bg = palette.light.red[2], nocombine = true }
-            )
-        else
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBar",
-                { fg = palette.light.fg, bg = palette.light.purple[2], nocombine = true }
-            )
-            vim.api.nvim_set_hl(
-                active_ns,
-                "WinBarAlert",
-                { fg = palette.light.syntax.keyword, bg = palette.light.purple[2], nocombine = true }
-            )
-        end
-    else
-        vim.notify("Unknown background setting: " .. vim.o.background, vim.log.levels.WARN)
+
+    -- Mode-specific background colors
+    local mode_backgrounds = {
+        normal = { dark = palette.dark.bg, light = palette.light.bg },
+        insert = { dark = palette.dark.green[6], light = palette.light.green[1] },
+        visual = { dark = palette.dark.yellow[6], light = palette.light.yellow[1] },
+        replace = { dark = palette.dark.red[6], light = palette.light.red[1] },
+    }
+    local bg_colors = mode_backgrounds[mode] or { dark = palette.dark.purple[6], light = palette.light.purple[2] }
+
+    -- For replace mode, WinBarAlert has a different background in light mode
+    local alert_bg_colors = bg_colors
+    if mode == "replace" and vim.o.background == "light" then
+        alert_bg_colors = { dark = bg_colors.dark, light = palette.light.red[2] }
     end
+
+    theme_hl.set_multiple(active_ns, {
+        WinBarFileName = {
+            dark = { fg = palette.dark.gray[0], bg = palette.dark.bg, nocombine = true },
+            light = { fg = palette.light.fg, bg = palette.light.bg, nocombine = true },
+        },
+        WinBar = {
+            dark = { fg = palette.dark.fg, bg = bg_colors.dark, nocombine = true },
+            light = { fg = palette.light.fg, bg = bg_colors.light, nocombine = true },
+        },
+        WinBarAlert = {
+            dark = { fg = palette.dark.syntax.keyword, bg = alert_bg_colors.dark, nocombine = true },
+            light = { fg = palette.light.syntax.keyword, bg = alert_bg_colors.light, nocombine = true },
+        },
+    })
+
     local current_win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_hl_ns(current_win, active_ns)
 end
@@ -307,49 +240,30 @@ function M.set_inactive_winbar_highlight()
     if not is_initialized then
         return
     end
-    if vim.o.background == "dark" then
-        vim.api.nvim_set_hl(
-            inactive_ns,
-            "WinBar",
-            { fg = palette.dark.basics.fg, bg = palette.dark.basics.bg, nocombine = true }
-        )
-        vim.api.nvim_set_hl(
-            inactive_ns,
-            "WinBarFileName",
-            { fg = palette.dark.gray[0], bg = palette.dark.basics.bg, nocombine = true }
-        )
-        vim.api.nvim_set_hl(
-            inactive_ns,
-            "WinBarAlert",
-            { fg = palette.dark.syntax.keyword, bg = palette.dark.basics.bg, nocombine = true }
-        )
-    elseif vim.o.background == "light" then
-        vim.api.nvim_set_hl(
-            inactive_ns,
-            "WinBar",
-            { fg = palette.light.basics.fg, bg = palette.light.basics.bg, nocombine = true }
-        )
-        vim.api.nvim_set_hl(
-            inactive_ns,
-            "WinBarFileName",
-            { fg = palette.light.basics.fg, bg = palette.light.basics.bg, nocombine = true }
-        )
-        vim.api.nvim_set_hl(
-            inactive_ns,
-            "WinBarAlert",
-            { fg = palette.light.syntax.keyword, bg = palette.light.basics.bg, nocombine = true }
-        )
-    else
-        vim.notify("Unknown background setting: " .. vim.o.background, vim.log.levels.WARN)
-        return
-    end
+
+    theme_hl.set_multiple(inactive_ns, {
+        WinBar = {
+            dark = { fg = palette.dark.basics.fg, bg = palette.dark.basics.bg, nocombine = true },
+            light = { fg = palette.light.basics.fg, bg = palette.light.basics.bg, nocombine = true },
+        },
+        WinBarFileName = {
+            dark = { fg = palette.dark.gray[0], bg = palette.dark.basics.bg, nocombine = true },
+            light = { fg = palette.light.basics.fg, bg = palette.light.basics.bg, nocombine = true },
+        },
+        WinBarAlert = {
+            dark = { fg = palette.dark.syntax.keyword, bg = palette.dark.basics.bg, nocombine = true },
+            light = { fg = palette.light.syntax.keyword, bg = palette.light.basics.bg, nocombine = true },
+        },
+    })
+
     local current_win = vim.api.nvim_get_current_win()
     vim.api.nvim_win_set_hl_ns(current_win, inactive_ns)
 end
 
 local last_winbar = ""
 -- Construct and update the winbar string (only updates if content changed)
--- Parameter: is_init - true during initialization
+-- Note: Typically called via schedule_winbar_update() for debouncing, not directly
+-- Parameter: is_init - true during initialization (bypasses debouncing)
 function M.set_win_bar(is_init)
     if not is_initialized and not is_init then
         return
@@ -420,6 +334,7 @@ end
 
 -- Initialize winbar system on first buffer load
 -- Populates all component caches, renders winbar, and sets initial highlights
+-- Note: Calls M.set_win_bar(true) directly to bypass debouncing during initialization
 function M.initialize_win_bar()
     if is_initialized then
         return
