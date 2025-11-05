@@ -5,7 +5,7 @@ return {
     {
         "projekt0n/github-nvim-theme",
         name = "github-theme",
-        lazy = false, -- Load during startup
+        lazy = false,    -- Load during startup
         priority = 1000, -- Load before other plugins
         config = function()
             local palette = require "modules.color-palette"

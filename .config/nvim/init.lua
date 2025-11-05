@@ -1,3 +1,4 @@
+vim.loader.enable()
 -- Core
 require "core.options"
 require "core.keymaps"
@@ -7,7 +8,6 @@ require "core.autocmds"
 local modules = {
     "lazy",
     "init-modules",
-    "lsp",
     "auto-save",
     "colorscheme",
     "cursor-line",
@@ -54,3 +54,4 @@ require("modules.lazy").setup(plugin_specs)
 
 -- After everything is loaded
 require("modules.init-modules").initialize_modules()
+require "modules.lsp"

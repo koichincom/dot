@@ -1,3 +1,7 @@
 {
-  "alwaysThinkingEnabled": false
+  "permissions": {
+    "defaultMode": "bypassPermissions"
+  },
+  "model": "sonnet[1m]",
+  "alwaysThinkingEnabled": true
 }

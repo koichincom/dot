@@ -7,7 +7,11 @@
       "Bash(do echo \"=== $file ===\")",
       "Bash(head:*)",
       "Bash(done)",
-      "Bash(cat:*)"
+      "Bash(git rm:*)",
+      "Bash(git add:*)",
+      "Bash(tree:*)",
+      "WebSearch",
+      "Bash(nvim:*)"
     ],
     "deny": [],
     "ask": []
