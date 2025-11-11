@@ -1,39 +1,59 @@
 # Todo
 
+Now, count.nvim is working in progress. After that I can use my plugin for my winbar.
+
 ## P1
 
-- [ ] Add modes highlight namespaces for each category (2 * 2 * 4 namespaces)
-- [ ] Add winbar specific values for the highlight presets
-
-## On light/dark mode switch
--- I don't consider the case lots of windows exist
--- if so, nvim_set_hl_ns() once, and nvim_win_set_hl_ns() for active window will be faster
-local list_wins = vim.api.nvim_list_wins()
-if #list_wins == 0 then
-    -- Case 3: No windows exist. Error handling
-elseif #list_wins == 1 then
-    -- Case 1: Only one window exists.
-    vim.api.nvim_win_set_hl_ns(0, current_ns_id)
-else
-    -- Case 2: Two, three, or more windows exist.
-    -- (You're assuming small numbers where this is faster)
-    local all_wins = list_wins
-    local current_win_id = vim.api.nvim_get_current_win()
-    local non_current_wins = all_wins - current_win_id
-    for _, win_id in ipairs(non_current_wins) do
-        vim.api.nvim_win_set_hl_ns(win_id, non_current_ns_id)
-    end
-    vim.api.nvim_win_set_hl_ns(current_win_id, current_ns_id)
-end
+- [ ] Winbar module system finalization
+  - [ ] Git branch component (hide/display logic in progress)
+  - [ ] CWD indicator component
+  - [ ] Copilot indicator component (After setting up llm-completion module system)
 
 ## P2
 
-- [ ] Consider not by triggered by InsertLeave, but textchanged + debouncing (it might be faster?) like this applies to auto-save, linting, and formatting
-- [ ] Debounce overall
+- [ ] Configure preset.lua (currently AI generated)
+- [ ] Add keymap to open TODO.md (<leader>td) - research Harpoon plugin or implement git root/CWD-based approach
+- [ ] auto-save might not needed since vim.opt.autowriteall = true feature exists
+- [ ] vim.opt.winbarnc might be refactoring the code a lot
+- [ ] Project name or repo name in winbar
+- [ ] Configure Copilot.vim and Supermaven.nvim
+- [ ] Implement debounce/throttle/schedule for winbar updates
+- [ ] Batch nvim_set_hl calls in highlight system to minimize performance impact
+- [ ] Consider textchanged + debouncing instead of InsertLeave for auto-save, linting, formatting
+- [ ] Add a save shortcut, consider the linting and formatting timings
+- [ ] Verify list.lua works correctly at startup
+- [ ] LSP keymaps: go to definition, references, etc.
 
 ## P3
-- [ ] LSP keymaps: go to definition, references, etc.
+
+- [ ] Consider the winbar redesign
 - [ ] Configure diagnostics appearance
-- [ ] Learn: quickfix, jumplist, vim marks
 - [ ] Winbar: word count in markdown files
+- [ ] Learn: schedule and wrap to safely execute autocmd callbacks in Neovim
+- [ ] Learn: autoread and how to reload files from outside changes (e.g., Claude Code)
+- [ ] Learn: quickfix, jumplist, vim marks
 - [ ] Learn: nvim-surround usage
+
+---
+
+## Done
+
+- [x] Init order issue
+- [x] branch's component_map: combine the 3 separated ones
+- [x] fix the status components integration (probably need to look into the each module)
+- [x] Branch component initialization
+- [x] file_mod and wrap initialization
+- [x] Core winbar components (path, encoding, file_mod, auto_save, wrap)
+- [x] Special buffer handling (skip render for buftype ~= "")
+- [x] vim.opt investigation - not applicable for winbar (string-only option, table.concat is optimal)
+- [x] Add Kanagawa.nvim theme support (but unused)
+- [x] Add nvim-colorizer to highlight code
+- [x] Organize the plugin files by changing the names and separating by one plugin per file
+- [x] Only use copilot.vim, not supermaven
+- [x] Add modes highlight namespaces for each category (2 * 2 * 4 namespaces)
+- [x] Add winbar specific values for the highlight presets
+- [x] **Integrate highlight namespace system endpoints**
+  - [x] Update ModeChanged autocmds (4 patterns: n/i/v/c) to call `switch_namespace(nil, nil, mode, true)` where mode is "normal"/"insert"/"visual"/"command"
+  - [x] Update WinEnter/WinLeave autocmds to use new 4-param API: `switch_namespace(is_active, nil, nil, true)` where is_active is true/false
+  - [x] Update background.lua theme switching to call `switch_namespace(nil, is_light, nil, false)` where is_light matches theme
+  - [x] Add TabEnter autocmd to sync all windows in new tab: `switch_namespace(nil, nil, nil, true, true)` with force_update
