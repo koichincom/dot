@@ -1,9 +1,9 @@
--- Asynchronous linter with filetype-specific linter configuration
 return {
     "mfussenegger/nvim-lint",
     event = { "BufReadPre", "BufNewFile" },
     config = function()
         local lint = require "lint"
+
         lint.linters_by_ft = {
             python = { "ruff" },
             lua = { "luacheck" },
@@ -15,5 +15,8 @@ return {
             markdown = { "markdownlint" },
             json = { "jsonlint" },
         }
+
+        local autocmds = require "core.autocmds"
+        autocmds.init_linting()
     end,
 }

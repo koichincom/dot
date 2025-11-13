@@ -11,6 +11,7 @@ return {
                 "cpp",
                 "csv",
                 "css",
+                "glsl",
                 "html",
                 "javascript",
                 "json",

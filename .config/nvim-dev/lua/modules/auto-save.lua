@@ -29,13 +29,20 @@ end
 local function toggle()
     if is_enabled then
         is_enabled = false
-        winbar.set_component("auto_save_status", false)
+        winbar.update_component("auto_save", false)
     else
         vim.cmd.update() -- More efficient than calling save_specified_buf for current buf
         is_enabled = true
-        winbar.set_component("auto_save_status", true)
+        winbar.update_component("auto_save", true)
     end
 end
+
+function M.init_winbar()
+    if is_enabled then
+        winbar.update_component("auto_save", true)
+    end
+end
+
 vim.keymap.set("n", "<leader>ts", toggle, { desc = "Toggle auto save" })
 
 return M

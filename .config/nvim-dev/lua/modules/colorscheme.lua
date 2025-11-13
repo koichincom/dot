@@ -16,12 +16,13 @@ function M.init()
     if is_initialized then
         return
     end
-    if vim.o.background == "light" then
+    local background = vim.o.background
+    if background == "light" then
         vim.cmd("colorscheme " .. light_theme)
-    elseif vim.o.background == "dark" then
+    elseif background == "dark" then
         vim.cmd("colorscheme " .. dark_theme)
     else
-        vim.notify("Invalid background setting: " .. vim.o.background, vim.log.levels.ERROR)
+        vim.notify("Invalid background setting: " .. background, vim.log.levels.ERROR)
         return
     end
     is_initialized = true

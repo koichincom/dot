@@ -1,4 +1,3 @@
--- Official GitHub Copilot completion plugin for Vim/Neovim
 return {
     "github/copilot.vim",
     config = function()
@@ -22,21 +21,29 @@ return {
         vim.keymap.del("i", "<M-\\>") -- Explicity request a suggestion
 
         local winbar = require "modules.winbar.main"
-        winbar.set_component("copilot", true)
-        local is_enabled = true
+
+        local function update_copilot_status()
+            local is_enabled = vim.fn["copilot#Enabled"]() == 1
+            winbar.update_component("copilot", is_enabled)
+        end
+
+        -- Initial status update
+        update_copilot_status()
+
+        -- Update status on buffer enter
+        vim.api.nvim_create_autocmd("BufEnter", {
+            pattern = "*",
+            callback = update_copilot_status,
+        })
 
         local function toggle()
+            local is_enabled = vim.fn["copilot#Enabled"]() == 1
             if is_enabled then
                 vim.cmd "Copilot disable"
-                winbar.set_component("copilot", false)
-                is_enabled = false
-            elseif is_enabled == false then
-                vim.cmd "Copilot enable"
-                winbar.set_component("copilot", true)
-                is_enabled = true
             else
-                vim.notify("Error toggling Copilot", vim.log.levels.ERROR)
+                vim.cmd "Copilot enable"
             end
+            update_copilot_status()
         end
         vim.keymap.set("n", "<leader>tc", toggle, { desc = "Toggle Copilot" })
     end,

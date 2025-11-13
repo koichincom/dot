@@ -20,6 +20,7 @@ return {
             "cssls",
             "jsonls",
             "astro",
+            "glsl_analyzer",
         }
 
         vim.keymap.set("n", "<leader>gd", vim.lsp.buf.definition)

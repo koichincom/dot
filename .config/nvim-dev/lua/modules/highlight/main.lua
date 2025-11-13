@@ -1,122 +1,125 @@
--- TODO: Batch the set_hl calls to minimize performance impact
-
 local M = {}
 local preset = require "modules.highlight.preset"
-local memory = require "modules.highlight.memory"
 
-local current_namespace_id = nil
-local namespaces = {}
+local current_is_active, current_is_light, current_mode = nil, nil, nil
+local max_namespace_num = 16
+local loaded_namespace_num = 0
+local is_initialized = false
 
-local function get_memory_table(namespace_id)
-    local namespace_memory_field_name = namespaces[namespace_id]
-    local namespace_memory = memory[namespace_memory_field_name]
-    return namespace_memory
-end
-
-local function set(target_namespace_id, preset_key)
-    local namespace = target_namespace_id or current_namespace_id
-    local highlight_class = preset[namespace][preset_key]["class"]
-    local highlight_values = preset[namespace][preset_key]["values"]
-    vim.api.nvim_set_hl(namespace, highlight_class, highlight_values)
-    local current_namespace_memory = get_memory_table(namespace)
-    current_namespace_memory[highlight_class] = preset_key
-end
-
--- Initialize highlights for a given namespace by applying all preset values
-local function initialize_highlight_for_namespace(namespace)
-    for key, _ in pairs(preset[namespace]) do
-        set(namespace, key)
+local function get_activity_and_theme(is_active, is_light)
+    if not is_initialized then
+        return
     end
+    local activity = is_active and "active" or "inactive"
+    local theme = is_light and "light" or "dark"
+    return activity, theme
 end
 
+-- Only called once per namespace
+local function load_namespace(is_active, is_light, mode)
+    if not is_initialized then
+        return
+    end
+    local activity, theme = get_activity_and_theme(is_active, is_light)
+    local namespace = activity .. "_" .. theme .. "_" .. mode
+    local namespace_id = vim.api.nvim_create_namespace(namespace)
+    preset[activity][theme][mode]["namespace_id"] = namespace_id
 
-local current_is_light, current_is_active = nil, true
-local ns_id_active_light, ns_id_active_dark = nil, nil
-local ns_id_inactive_light, ns_id_inactive_dark = nil, nil
+    local preset_namespace = preset[activity][theme][mode]
+    local preset_classes = preset_namespace["classes"]
+    for class, _ in pairs(preset_classes) do
+        local hl_class = preset_classes[class]["class_id"]
+        local hl_values = preset_classes[class]["values"]
+        vim.api.nvim_set_hl(namespace_id, hl_class, hl_values)
+    end
+    preset_namespace["is_loaded"] = true
+    loaded_namespace_num = loaded_namespace_num + 1
+end
 
+-- Create an initial namespace on startup
 function M.init()
-    if vim.o.background == "light" then
-        ns_id_active_light = vim.api.nvim_create_namespace "ns-active-light"
-        initialize_highlight_for_namespace(ns_id_active_light)
-        namespaces[ns_id_active_light] = "current_light_active_class_values"
+    -- vim.o.background is initially set based on the terminal settings by Neovim
+    local background = vim.o.background
+    if background == "light" then
         current_is_light = true
-        current_namespace_id = ns_id_active_light
-    elseif vim.o.background == "dark" then
-        ns_id_active_dark = vim.api.nvim_create_namespace "ns-active-dark"
-        initialize_highlight_for_namespace(ns_id_active_dark)
-        namespaces[ns_id_active_dark] = "current_dark_active_class_values"
+    elseif background == "dark" then
         current_is_light = false
-        current_namespace_id = ns_id_active_dark
     else
-        vim.notify("Unknown background: " .. vim.o.background, vim.log.levels.WARN)
+        vim.notify("vim.o.background is neither 'light' nor 'dark': " .. tostring(background), vim.log.levels.WARN)
+        return
     end
+    -- Assume active and normal mode on startup
+    current_is_active = true
+    current_mode = "normal"
+    is_initialized = true
+    load_namespace(current_is_active, current_is_light, current_mode)
 end
 
-function M.switch_namespace(is_light, is_active)
-    local function set_highlights_for_namespace(target_namespace_id)
-        if target_namespace_id == current_namespace_id then
-            vim.notify("Already in the target namespace, but switch_namespace called.", vim.log.levels.WARN)
-            return
-        end
-        local current_namespace_memory = get_memory_table(current_namespace_id)
-        local target_namespace_memory = get_memory_table(target_namespace_id)
-        for key, value in pairs(current_namespace_memory) do
-            if target_namespace_memory[key] ~= value then
-                set(target_namespace_id, value)
-            end
-        end
+-- Generally, is_for_current_win should be true for activity and mode changes
+-- this is for leaveing a flexibility as a function
+function M.switch_namespace(is_active, is_light, mode, is_for_current_win)
+    if not is_initialized then
+        return
     end
 
-    is_light = is_light or current_is_light
-    is_active = is_active or current_is_active
+    -- Use current values if nil (avoid 'or' for booleans since false is valid)
+    if is_active == nil then
+        is_active = current_is_active
+    end
+    if is_light == nil then
+        is_light = current_is_light
+    end
+    if mode == nil then
+        mode = current_mode
+    end
 
-    if is_light then
-        if is_active then
-            if ns_id_active_light == nil then
-                ns_id_active_light = vim.api.nvim_create_namespace"ns-active-light"
-                initialize_highlight_for_namespace(ns_id_active_light)
-                namespaces[ns_id_active_light] = "current_light_active_class_values"
+    -- Check if already in the target namespace
+    if (is_active == current_is_active) and (is_light == current_is_light) and (mode == current_mode) then
+        -- vim.notify("Already in the target namespace, but switch_namespace called.", vim.log.levels.INFO)
+        return
+    end
+
+    local activity, theme = get_activity_and_theme(is_active, is_light)
+    if is_for_current_win then
+        if loaded_namespace_num < max_namespace_num then
+            if preset[activity][theme][mode]["is_loaded"] == false then
+                load_namespace(is_active, is_light, mode)
             end
-            set_highlights_for_namespace(ns_id_active_light)
-            vim.api.nvim_set_hl_ns(ns_id_active_light)
-            current_namespace_id = ns_id_active_light
-            current_is_active = true
-        else
-            if ns_id_inactive_light == nil then
-                ns_id_inactive_light = vim.api.nvim_create_namespace "ns-inactive-light"
-                initialize_highlight_for_namespace(ns_id_inactive_light)
-                namespaces[ns_id_inactive_light] = "current_light_inactive_class_values"
-            end
-            set_highlights_for_namespace(ns_id_inactive_light)
-            vim.api.nvim_set_hl_ns(ns_id_inactive_light)
-            current_namespace_id = ns_id_inactive_light
-            current_is_active = false
         end
-        current_is_light = true
+        vim.api.nvim_win_set_hl_ns(0, preset[activity][theme][mode]["namespace_id"])
     else
-        if is_active then
-            if ns_id_active_dark == nil then
-                ns_id_active_dark = vim.api.nvim_create_namespace "ns-active-dark"
-                initialize_highlight_for_namespace(ns_id_active_dark)
-                namespaces[ns_id_active_dark] = "current_dark_active_class_values"
+        local current_tab_windows = vim.api.nvim_tabpage_list_wins(0)
+        if #current_tab_windows == 1 then
+            if loaded_namespace_num < max_namespace_num then
+                if preset["active"][theme][mode]["is_loaded"] == false then
+                    load_namespace(true, is_light, mode)
+                end
             end
-            set_highlights_for_namespace(ns_id_active_dark)
-            vim.api.nvim_set_hl_ns(ns_id_active_dark)
-            current_namespace_id = ns_id_active_dark
-            current_is_active = true
+            vim.api.nvim_win_set_hl_ns(0, preset["active"][theme][mode]["namespace_id"])
         else
-            if ns_id_inactive_dark == nil then
-                ns_id_inactive_dark = vim.api.nvim_create_namespace "ns-inactive-dark"
-                initialize_highlight_for_namespace(ns_id_inactive_dark)
-                namespaces[ns_id_inactive_dark] = "current_dark_inactive_class_values"
+            if loaded_namespace_num < max_namespace_num then
+                if preset["active"][theme][mode]["is_loaded"] == false then
+                    load_namespace(true, is_light, mode)
+                end
+                if preset["inactive"][theme][mode]["is_loaded"] == false then
+                    load_namespace(false, is_light, mode)
+                end
             end
-            set_highlights_for_namespace(ns_id_inactive_dark)
-            vim.api.nvim_set_hl_ns(ns_id_inactive_dark)
-            current_namespace_id = ns_id_inactive_dark
-            current_is_active = false
+            local current_win_id = vim.api.nvim_get_current_win()
+            for _, win_id in ipairs(current_tab_windows) do
+                if win_id ~= current_win_id then
+                    vim.api.nvim_win_set_hl_ns(win_id, preset["inactive"][theme][mode]["namespace_id"])
+                end
+            end
+            vim.api.nvim_win_set_hl_ns(current_win_id, preset["active"][theme][mode]["namespace_id"])
+
+            -- In some cases, following way might be more efficient, but the conditions and
+            -- break-even point is unknown, and the difference should be negligilble
+            -- nvim_set_hl_ns once, and nvim_win_set_hl_ns once for the active window
         end
-        current_is_light = false
     end
+
+    current_is_active, current_is_light, current_mode = is_active, is_light, mode
 end
 
 return M

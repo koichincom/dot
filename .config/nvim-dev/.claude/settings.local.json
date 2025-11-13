@@ -1,17 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Read(//Users/koichi/.local/share/nvim/lazy/oil.nvim/doc/**)",
-      "Read(//Users/koichi/.local/share/nvim/lazy/oil.nvim/lua/**)",
-      "Bash(for file in /Users/koichi/.config/nvim/lua/plugins/{comment,copilot,dial,discord,file-tree,fuzzy-finder}.lua)",
-      "Bash(do echo \"=== $file ===\")",
-      "Bash(head:*)",
-      "Bash(done)",
-      "Bash(git rm:*)",
-      "Bash(git add:*)",
-      "Bash(tree:*)",
-      "WebSearch",
-      "Bash(nvim:*)"
+      "Bash(nvim:*)",
+      "Bash(find:*)"
     ],
     "deny": [],
     "ask": []

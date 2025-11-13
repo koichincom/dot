@@ -6,31 +6,25 @@ local last_wrap_status = nil
 local function wrap_on()
     vim.wo.wrap = true
     last_wrap_status = true
-    winbar.set_component("wrap", true)
+    winbar.update_component("wrap", true)
 end
 
 local function wrap_off()
     vim.wo.wrap = false
     last_wrap_status = false
-    winbar.set_component("wrap", false)
-end
-
-if vim.fn.expand "%:e" == "txt" or vim.fn.expand "%:e" == "md" then
-    wrap_on()
-else
-    wrap_off()
+    winbar.update_component("wrap", false)
 end
 
 function M.update(filetype)
     local wrap_filetype = {
-        "txt",
-        "md",
-        "markdown",
-        "tex",
-        "rst",
-        "gitcommit",
-        "gitrebase",
-        "help",
+        text = true,
+        txt = true,
+        markdown = true,
+        gitcommit = true,
+        help = true,
+        json = true,
+        yaml = true,
+        toml = true,
     }
     if wrap_filetype[filetype] then
         wrap_on()
@@ -41,9 +35,9 @@ end
 
 local function toggle()
     if last_wrap_status then
-        M.wrap_off()
+        wrap_off()
     elseif not last_wrap_status then
-        M.wrap_on()
+        wrap_on()
     else
         vim.notify("Error toggling Wrap", vim.log.levels.ERROR)
     end

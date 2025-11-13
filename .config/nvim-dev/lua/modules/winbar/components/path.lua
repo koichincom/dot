@@ -1,15 +1,15 @@
 local M = {}
 
-local file_path = nil
-local file_name = nil
+-- Store last_full_path to avoid unnecessary computation
+-- Although, whether updated is checked in (winbar/main.lua) for every component
 local last_full_path = nil
-function M.get_path_name(params)
+function M.get_path_name()
     local full_path = vim.fs.normalize(vim.fn.expand "%:p")
     if full_path == last_full_path then
-        return nil, false
+        return nil
     end
     last_full_path = full_path
-    file_path, file_name = "", ""
+    local file_path, file_name = "", ""
 
     -- Handle oil.nvim directory buffers (display directory path only, no filename)
     if vim.startswith(full_path, "oil:/") or full_path == "oil:" then
@@ -21,7 +21,7 @@ function M.get_path_name(params)
         -- Normal file buffers: split into directory and filename
         full_path = vim.fn.fnamemodify(full_path, ":.") -- Make relative to cwd
         file_path = vim.fn.fnamemodify(full_path, ":h") -- Directory portion
-        file_path = file_path:gsub("^%.$", "")          -- Remove "." for cwd root
+        file_path = file_path:gsub("^%.$", "") -- Remove "." for cwd root
         file_name = vim.fn.fnamemodify(full_path, ":t") -- Filename only
     end
 
@@ -39,22 +39,19 @@ function M.get_path_name(params)
     if string.sub(file_name, #file_name, #file_name) == "/" then
         file_name = string.sub(file_name, 1, #file_name - 1)
     end
-    return { file_path = file_path, name = file_name }, true
+    return { path = file_path, name = file_name }
 end
 
-local last_encode = nil
-function M.get_encode(params)
+function M.get_encode()
+    if vim.bo.buftype ~= "" then
+        return nil
+    end
     local encode = (vim.bo.fileencoding or ""):lower()
     if encode ~= "utf-8" and encode ~= "" then
-        encode = "[" .. encode .. "]"
+        local formatted_encode = "[" .. encode .. "]"
+        return formatted_encode
     else
-        encode = ""
-    end
-    if encode ~= last_encode then
-        last_encode = encode
-        return encode, true
-    else
-        return nil, false
+        return nil
     end
 end
 

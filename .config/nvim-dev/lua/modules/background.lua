@@ -36,11 +36,11 @@ function M.update()
     if theme == nil then
         return
     elseif theme == "light" then
-        highlight.switch_namespace(true, nil)
         colorscheme.set_light()
+        highlight.switch_namespace(nil, true, nil, false)
     else
-        highlight.switch_namespace(false, nil)
         colorscheme.set_dark()
+        highlight.switch_namespace(nil, false, nil, false)
     end
 end
 

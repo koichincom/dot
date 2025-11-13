@@ -1,36 +1,31 @@
 local M = {}
 
 local branch = require "modules.winbar.components.branch"
-local file = require "modules.winbar.components.file"
+local path = require "modules.winbar.components.path"
 local status = require "modules.winbar.components.status"
 
-local last_winbar = ""
-local is_initialized = false
-
--- state doesn't need to be nil, since is_initialized already guards uninitialized state
 local components_map = {
     git_branch = {
         state = "",
-        getter = branch.get,
+        getter = branch.get_branch,
     },
     git_branch_hide = {
-        state = "",
-        getter = branch.hide,
+        state = nil,
+        getter = branch.get_hide,
     },
-    git_branch_unhide = {
+    git_branch_display = {
         state = "",
-        getter = branch.unhide,
     },
     file_path_name = {
         state = {
             path = "",
             name = "",
         },
-        getter = file.get_path_name,
+        getter = path.get_path_name,
     },
     encode = {
         state = "",
-        getter = file.get_encode,
+        getter = path.get_encode,
     },
     file_mod = {
         state = "",
@@ -50,29 +45,12 @@ local components_map = {
     },
 }
 
--- TODO: implement debounce, throttle, or schedule to avoid excessive updates
-function M.set_component(component_name, params)
-    local component_conf = components_map[component_name]
-    local state, is_ready_to_set = component_conf.getter(params)
-    if state ~= nil and is_ready_to_set then
-        component_conf.state = state
-        M.set()
-    elseif state ~= nil and not is_ready_to_set then
-        -- The state changed but not ready to set yet
-        -- For example, git branch changed but buffer is not a normal file buffer
-        component_conf.state = state
-    end
-end
-
-function M.set()
-    if not is_initialized then
-        return
-    end
+local function render()
     local cm = components_map
     local winbar = table.concat {
         "%#WinBar#",
         " ",
-        cm.git_branch.state,
+        cm.git_branch_display.state,
         "%=",
         cm.file_path_name.state.path,
         (cm.file_path_name.state.path ~= "" and cm.file_path_name.state.name ~= "") and "/" or "",
@@ -96,23 +74,36 @@ function M.set()
         cm.copilot.state,
         " ",
     }
-    if winbar == last_winbar then
-        return
-    else
-        vim.wo.winbar = winbar
-        last_winbar = winbar
-    end
+    vim.wo.winbar = winbar
 end
 
-function M.init()
-    if is_initialized then
+function M.update_component(component_name, params)
+    local component_conf = components_map[component_name]
+    local state = component_conf.getter(params)
+
+    -- Return if the component is unchanged, or state is nil
+    if (component_conf.state == state) or (state == nil) then
         return
     end
-    for component_name, _ in pairs(components_map) do
-        M.set_component(component_name)
+    component_conf.state = state
+
+    -- Skip render for special buffers (buftype ~= "")
+    -- File buffers inherit vim.wo.winbar from previous windows, but special buffers don't
+    -- So special buffers naturally stay empty without needing explicit clearing
+    if vim.bo.buftype ~= "" then
+        return
     end
-    M.set()
-    is_initialized = true
+
+    if component_name == "git_branch_hide" and state then
+        components_map.git_branch_display.state = ""
+    elseif component_name == "git_branch_hide" and not state then
+        components_map.git_branch_display.state = branch.get_branch()
+    elseif component_name == "git_branch" and components_map.git_branch_hide.state then
+        return
+    elseif component_name == "git_branch" and not components_map.git_branch_hide.state then
+        components_map.git_branch_display.state = branch.get_branch()
+    end
+    render()
 end
 
 return M

@@ -1,13 +1,12 @@
--- Load the colorscheme plugin
--- (coloscheme application is handled in modules/colorscheme.lua)
+-- Load the colorscheme plugins, and they're applied in (modules/colorscheme.lua)
+local colors = require "modules.colors"
 return {
-    "projekt0n/github-nvim-theme",
-    name = "github-theme",
-    lazy = false,        -- Load during startup
-    priority = 1000,     -- Load before other plugins
-    config = function()
-        local palette = require "modules.colors"
-        require("github-theme").setup {
+    {
+        "projekt0n/github-nvim-theme",
+        name = "github-theme",
+        lazy = false, -- Load during startup
+        priority = 1000, -- Load before other plugins
+        opts = {
             options = {
                 darken = {
                     floats = true,
@@ -20,8 +19,8 @@ return {
             groups = {
                 github_light_default = {
                     -- oil.nvim buffer
-                    Directory = { fg = palette.light.gray[9] },
-                    OilFile = { fg = palette.light.blue[5] },
+                    Directory = { fg = colors.light.gray[9] },
+                    OilFile = { fg = colors.light.blue[5] },
 
                     -- listchars
                     -- space, multispace, leadmultispace, lead, trail, and nbsp
@@ -31,8 +30,8 @@ return {
                 },
                 github_dark_dimmed = {
                     -- oil.nvim buffer
-                    Directory = { fg = palette.dark.gray[0] },
-                    OilFile = { fg = palette.dark.gray[1] },
+                    Directory = { fg = colors.dark.gray[0] },
+                    OilFile = { fg = colors.dark.gray[1] },
 
                     -- listchars
                     -- space, multispace, leadmultispace, lead, trail, and nbsp
@@ -41,6 +40,6 @@ return {
                     -- NonText = { fg = palette.light.pink[2] }, -- eol, extends, precedes
                 },
             },
-        }
-    end,
+        },
+    },
 }

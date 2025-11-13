@@ -23,6 +23,7 @@ return {
                 "stylua",
                 "ts_ls",
                 "astro",
+                "glsl_analyzer",
             },
             mason_tool_installer.setup {
                 ensure_installed = {
